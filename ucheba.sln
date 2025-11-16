@@ -18,6 +18,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "cin cout 01", "cin cout 01"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "main01", "main01\main01.vcxproj", "{1AD75A0D-E9AE-4CE1-9358-3771A7262F64}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "bool if else 02", "bool if else 02", "{3739ADC7-2896-454E-A630-76AA9AEFDAE8}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "main02", "main02\main02.vcxproj", "{03456C46-AC13-4E2F-8810-2E92AEFD147A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -50,6 +54,14 @@ Global
 		{1AD75A0D-E9AE-4CE1-9358-3771A7262F64}.Release|x64.Build.0 = Release|x64
 		{1AD75A0D-E9AE-4CE1-9358-3771A7262F64}.Release|x86.ActiveCfg = Release|Win32
 		{1AD75A0D-E9AE-4CE1-9358-3771A7262F64}.Release|x86.Build.0 = Release|Win32
+		{03456C46-AC13-4E2F-8810-2E92AEFD147A}.Debug|x64.ActiveCfg = Debug|x64
+		{03456C46-AC13-4E2F-8810-2E92AEFD147A}.Debug|x64.Build.0 = Debug|x64
+		{03456C46-AC13-4E2F-8810-2E92AEFD147A}.Debug|x86.ActiveCfg = Debug|Win32
+		{03456C46-AC13-4E2F-8810-2E92AEFD147A}.Debug|x86.Build.0 = Debug|Win32
+		{03456C46-AC13-4E2F-8810-2E92AEFD147A}.Release|x64.ActiveCfg = Release|x64
+		{03456C46-AC13-4E2F-8810-2E92AEFD147A}.Release|x64.Build.0 = Release|x64
+		{03456C46-AC13-4E2F-8810-2E92AEFD147A}.Release|x86.ActiveCfg = Release|Win32
+		{03456C46-AC13-4E2F-8810-2E92AEFD147A}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -57,6 +69,7 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{AC63E24E-14AC-4291-928E-F2C180FDD0E3} = {36D591C7-65C7-A0D1-1CBC-10CDE441BDC8}
 		{1AD75A0D-E9AE-4CE1-9358-3771A7262F64} = {91EC7A8A-A10B-4EFE-AC8B-CA041A1974F6}
+		{03456C46-AC13-4E2F-8810-2E92AEFD147A} = {3739ADC7-2896-454E-A630-76AA9AEFDAE8}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {19E49969-F5D4-4AE4-8B9D-9EAE01A114B6}

@@ -2,12 +2,13 @@
 
 using namespace std;
 
-void ts1(){
+void ts0(){
 	cout << "hello world";
 }
 
+
 int main() {
-	ts1();
+	ts0();
 
 	return 0;
 }
