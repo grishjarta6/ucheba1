@@ -114,17 +114,51 @@ void task_1_8() {
 }
 
 void task_1_9() {
-    int n, m;
+    int n, m, nn, mm;
     cin >> n >> m;
-    // abs - модуль числа из библиотеки cmath
-    if (abs(n) > abs(m)) {
-        cout << n - 100 << " " << m << endl;
-    }
+    nn = n;
+    mm = m;
+    if (n < 0) {
+        nn = n * -1;
+        if (m < 0) {
+            mm = m * -1;
+            if (nn > mm) {
+                cout << n - 100 << " " << m << endl;
+            }
+            else {
+                cout << n << " " << m << endl;
+            }
+        }
+        else {
+            if (nn > mm) {
+                cout << n - 100 << " " << m << endl;
+            }
+            else {
+                cout << n << " " << m << endl;
+            }
+        }
+        }
     else {
-        cout << n << " " << m << endl;
+        if (m < 0) {
+            mm = m * -1;
+            if (nn > mm) {
+                cout << n - 100 << " " << m << endl;
+            }
+            else {
+                cout << n << " " << m << endl;
+            }
+        }
+        else {
+            if (nn > mm) {
+                cout << n - 100 << " " << m << endl;
+            }
+            else {
+                cout << n << " " << m << endl;
+            }
+        }
     }
-}
-
+    }
+    
 void task_1_10() {
     int n, m, x, y;
     cin >> n >> m >> x >> y;
@@ -256,6 +290,52 @@ void task_3_7() {
         cout << "0" << endl;
     }
 }
+
+void task_1_9_2() {
+    int n, m, nn, mm;
+    cin >> n >> m;
+    if ((n < 0)) {
+        nn = n * -1;
+    }
+    if (m < 0) {
+        mm = m * -1;
+    }
+    if (nn > mm) {
+        cout << n - 100 << " " << m << endl;
+    }
+    else {
+        cout << n << " " << m << endl;
+    }
+}
+
+void task_3_1_1() {
+    int b;
+    cin >> b;
+    cout << (abs(b) % 2 == 0);
+    if (abs(b) % 2 == 0) {
+        cout << "1" << endl;
+    }
+    else {
+        cout << "0" << endl;
+    }
+}
+
+void ts1() {
+    int n;
+    bool a, b;
+    cin >> n;
+    a = (n > 0) ? 1 : 0;
+    if (a == 1) {
+        b = (n % 2) ? 1 : 0;
+        cout << b;
+    }
+    else {
+        n = -n;
+        b = (n % 2) ? 1 : 0;
+        cout << b;
+    }
+}
+
 
 int main() {
 

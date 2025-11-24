@@ -114,7 +114,7 @@ void ts13() {
 		}
 	}
 	else {
-		for (int i = b; i <= b; i++) {
+		for (int i = b; i <= a; i++) {
 			cout << i << " ";
 		}
 	}
