@@ -5,6 +5,7 @@ void ts00() {
 	cout << "1111111";
 }
 
+//БИТОВЫЕ ОПЕРАЦИИ
 void ts01() {
 	int n;
 	cin >> n;
@@ -210,6 +211,7 @@ void ts10() {
 	cout << (n & ~(1 << k)) << endl;
 }
 
+//ВЫДЕЛЕНИЕ ЦИФР
 void ts11() {
 	int n, a;
 	cin >> n;
