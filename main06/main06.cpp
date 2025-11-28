@@ -1,4 +1,5 @@
 ﻿#include <iostream>
+#include <cmath>
 using namespace std;
 
 //ВЛОЖЕННЫЕ ЦИКЛЫ
@@ -81,6 +82,21 @@ void ts1_5() {
 	}
 }
 
+void ts1_6() {
+	int n, i;
+	float a = 0;
+	cin >> n;
+	for (i = 1; i <= n; i += 1) {
+		//cout << "1";
+		a += pow(i, 0.5);
+		//cout << a;
+	}
+	cout << a;
+}
+
+
+
+//МАССИВЫ
 void ts2_1() {
 	int n, k, i, s = 10;
 	cin >> n >> k;
@@ -99,6 +115,7 @@ int main() {
 	//ts1_3();
 	//ts1_4();
 	//ts1_5();
+	ts1_6();
 	
 	//ts2_1();
 }
