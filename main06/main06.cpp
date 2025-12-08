@@ -109,13 +109,41 @@ void ts2_1() {
 		cout << m[i] << " ";
 	}
 }
+void ts2_2() {
+	int a[101], n, i = 0, c = 0;
+	cin >> n;
+	for (i = 0; i < n; i += 1) {
+		cin >> a[i];
+		c = i;
+	}
+	cin >> a[c + 1];
+	for (i = 0; i < n + 1; i += 1) {
+		cout << a[i] << " ";
+	}
+}
+
+void ts2_3() {
+	int a[1000], n = 0, k = 0, c = 0;
+	cin >> n;
+	k = n;
+	while (k != 0) {
+		a[c] = k;
+		c += 1;
+		k = k - 1;
+	}
+	for (int i = 0; i < n; i++) {
+		cout << a[i] << " ";
+	}
+}
+
 int main() {
 	//ts1_1();
 	//ts1_2();
 	//ts1_3();
 	//ts1_4();
 	//ts1_5();
-	ts1_6();
-	
+	//ts1_6();
+
 	//ts2_1();
-}
+	//ts2_2();
+	//ts2_3();
