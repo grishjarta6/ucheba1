@@ -135,6 +135,68 @@ void ts2_3() {
 		cout << a[i] << " ";
 	}
 }
+void ts2_4() {
+	int n, k = 1, i, c = 0, m[100], c2 = 0, c3 = 0;
+	cin >> n;
+	while (k != 0) {
+		cin >> k;
+		m[c2] = k;
+		c2 += 1;
+	}
+	for (i = 0; i < n + 2; i += 1) {
+		if (m[i] >= n) {
+			c += 1;
+			c3 += m[i];
+			//cout << m[i] << " " << c << " " << c3 << endl;
+		}
+	}
+	cout << c << " " << c3;
+
+}
+
+void ts2_5() {
+	int m[100], n, c = 0, i, k;
+	cin >> n;
+	for (i = n; i > 0; i -= 1) {
+		m[c] = i;
+		c += 1;
+	}
+	for (k = 0; k < n; k += 1) {
+		cout << m[k] << " ";
+	}
+
+}
+
+void ts2_6() {
+	int n = 7, a, c, i, m[7], s;
+	cin >> a >> c;
+	s = a;
+	for (i = 0; i < n; i += 1) {
+		m[i] = s;
+		s = s * c;
+	}
+	for (i = 0; i < n; i += 1) {
+		cout << m[i] << " ";
+	}
+}
+
+void ts2_7() {
+	int m[100], n, i = 0, k, d, b;
+	cin >> n;
+	d = n;
+	//cout << 11111 << endl;
+	while (d != 0) {
+		b = d % 10;
+		m[i] = b;
+		d = d / 10;
+		i += 1;
+	}
+	for (k = 0; k < i; k += 1) {
+		cout << m[k] << " ";
+	}
+}
+
+
 
 int main() {
 	//ts1_1();
@@ -147,3 +209,8 @@ int main() {
 	//ts2_1();
 	//ts2_2();
 	//ts2_3();
+	//ts2_4();
+	//ts2_5();
+	//ts2_6();
+	//ts2_7();
+}
