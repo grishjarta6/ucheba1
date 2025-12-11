@@ -196,7 +196,71 @@ void ts2_7() {
 	}
 }
 
+void ts2_8() {
+	int n, i;
+	float k;
+	cin >> n;
+	float a[100];
+	for (i = 0; i < n; i += 1) {
+		cin >> k;
+		a[i] = pow(k, 0.5);
+	}
+	for (i = 0; i < n; i += 1) {
+		cout << a[i] << " ";
+	}
+}
 
+void ts2_9() {
+	int n, k, b, i, m[100];
+	cin >> n;
+	for (i = 0; i < n; i += 1) {
+		cin >> b;
+		m[i] = b;
+	}
+	cin >> k;
+	for (i = 0; i < n; i += 1) {
+		if (m[i] % k == 0) {
+			cout << m[i];
+		}
+	}
+}
+
+void ts2_10() {
+	int n, k, c, i, m[100];
+	cin >> n;
+	for (i = 0; i < n; i += 1) {
+		cin >> c;
+		m[i] = c;
+	}
+	cin >> k;
+	if (m[k] % 2 == 0) {
+		cout << "yes";
+	}
+}
+
+void ts1488() {
+	int m[100], n = 100, g, r = 0, i, q1, q2, min, max, a, b;
+	for (g = n; g > 0; g = g - 1) {
+		//m[r] = g;
+		r += 1;
+	}
+	cin >> n;
+	for (i = 0; i < n; i++) {
+		cin >> b;
+		m[i] = b;
+	}
+	for (i = 0; i < n - 1; i += 1) {
+		q1 = i;
+		q2 = i + 1;
+		if (m[q1] > m[q2]) {
+			min = m[q2];
+			max = m[q1];
+			m[q2] = max;
+			m[q1] = min;
+		}
+	}
+	for (i = 0; i < n; i += 1) { cout << m[i] << " ";}
+}
 
 int main() {
 	//ts1_1();
@@ -213,4 +277,8 @@ int main() {
 	//ts2_5();
 	//ts2_6();
 	//ts2_7();
+	//ts2_8();
+	//ts2_9();
+	//ts2_10();
+	ts1488();
 }
