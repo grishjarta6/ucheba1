@@ -169,6 +169,100 @@ void ts2_8() {
 	}
 }
 
+//массивы 3
+void ts3_1() {
+	int n, a, ma[100], mb[100], i;
+	cin >> n;
+	cout << "------" << endl;
+	for (i = 0; i < n; i += 1) {
+		cin >> a;
+		ma[i] = a;
+	}
+	for (i = 0; i < n; i += 1) {
+		if (i % 2 != 0) {
+			mb[i] = ma[i] * 2;
+		}
+		else {
+			mb[i] = ma[i] * ma[i];
+		}
+	}
+	for (i = 0; i < n; i += 1) {
+		cout << mb[i] << " ";
+	}
+}
+
+void ts3_3() {
+	int n, i, a, ma[100], mb[100], c = 0;
+	cin >> n;
+	n = n + 1;
+	cout << "------" << endl;
+	for (i = 1; i < n; i += 1) {
+		cin >> a;
+		ma[i] = a;
+	}
+	for (i = 1; i < n; i += 1) {
+		if (i % 2 == 0) {
+			mb[c] = ma[i];
+			c += 1;
+		}
+	}
+	for (i = c; i < n; i += 1) {
+		mb[i] = 0;
+	}
+	for (i = 0; i < n - 1; i += 1) {
+		cout << mb[i] << " ";
+	}
+}
+
+void ts3_7() {
+	int n, i, a, ma[100], mb[100], mc[100], cb = 0, cc = 0;
+	cin >> n;
+	cout << "------" << endl;
+	for (i = 0; i < n; i += 1) {
+		cin >> a;
+		ma[i] = a;
+	}
+	for (i = 0; i < n; i += 1) {
+		if (ma[i] >= 0) {
+			mb[cb] = ma[i];
+			cb += 1;
+		}
+		else {
+			mc[cc] = ma[i];
+			cc += 1;
+		}
+	}
+	for (i = 0; i < cb; i += 1) { cout << mb[i] << " "; }
+	cout << endl;
+	for (i = 0; i < cc; i += 1) { cout << mc[i] << " "; }
+}
+
+void ts3_8() {
+	int n, i, a, ma[100], mb[100], c = 0;
+	cin >> n;
+	cout << "------" << endl;
+	for (i = 0; i < n; i += 1) {
+		cin >> a;
+		ma[i] = a;
+	}
+	for (i = 0; i < n; i += 1) {
+		if (ma[i] < 0) {
+			mb[c] = ma[i];
+			c += 1;
+		}
+	}
+	for (i = 0; i < n; i += 1) {
+		if (ma[i] >= 0) {
+			mb[c] = ma[i];
+			c += 1;
+		}
+	}
+	for (i = 0; i < n; i += 1) {
+		cout << mb[i] << " ";
+	}
+}
+
+
 int main() {
 	//ts0_6();
 	//ts0_7();
@@ -178,6 +272,11 @@ int main() {
 	//ts1_4();
 	//ts1_10();
 
-	ts2_1();
+	//ts2_1();
 	//ts2_8();
+
+	//ts3_1();
+	//ts3_3();
+	//ts3_7();
+	//ts3_8();
 }
