@@ -148,7 +148,49 @@ void ts2_1() {
 	for (i = 0; i < (n + 1); i += 1) { cout << "ans: " << m2[i] << " " << i << endl; }
 }
 
+void ts2_2() {
+	int n, a, k, ma[100], mb[100], i;
+	cin >> n;
+	cout << "---------" << endl;
+	for (i = 0; i < n; i += 1) {
+		cin >> a;
+		ma[i] = a;
+	}
+	cout << "---------" << endl;
+	cin >> k;
+	for (i = 0; i < k; i += 1) {
+		mb[i] = ma[i];
+	}
+	for (i = k + 1; i < n; i += 1) {
+		mb[i - 1] = ma[i];
+	}
+	for (i = 0; i < n - 1; i += 1) {
+		cout << mb[i] << " ";
+	}
+}
 
+void ts2_3() {
+	int n, a, k, m, ma[100], mb[100], i, c = 0;
+	cin >> n;
+	cout << "---------" << endl;
+	for (i = 0; i < n; i += 1) {
+		cin >> a;
+		ma[i] = a;
+	}
+	cout << "---------" << endl;
+	cin >> k >> m;
+	for (i = 0; i < k; i += 1) {
+		mb[i] = ma[i];
+		c += 1;
+	}
+	for (i = m + 1; i < n; i += 1) {
+		mb[c] = ma[i];
+		c += 1;
+	}
+	for (i = 0; i < n - c; i += 1) {
+		cout << mb[i] << " ";
+	}
+}
 
 void ts2_8() {
 	int m[15], k, s, i, n = 15, a, c = 0, f, j;
@@ -257,8 +299,8 @@ void ts3_8() {
 			c += 1;
 		}
 	}
-	for (i = 0; i < n; i += 1) {
-		cout << mb[i] << " ";
+	for (i = 0; i < n - c; i += 1) {
+		cout << mb[i] << " " ;
 	}
 }
 
@@ -273,6 +315,8 @@ int main() {
 	//ts1_10();
 
 	//ts2_1();
+	//ts2_2();
+	//ts2_3();
 	//ts2_8();
 
 	//ts3_1();
