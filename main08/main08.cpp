@@ -76,10 +76,15 @@ void ts3() {
 
 }
 
-
+void ts4() {
+	int a = 10, b = 50, c;
+	c = a % b;
+	cout << c;
+}
 
 int main() {
 	//ts1();
 	//ts2();
 	//ts3();
+	ts4();
 }
