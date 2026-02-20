@@ -99,32 +99,78 @@ void ts6() {
     else {cout << "no";}
 }
 
-int ts71(int n) {
-    if (n < 10) { return n; }
-    else {
-        
-        cout << n % 2;
-        return ts71(n / 10);
+void ts71(int n) {
+    if (n > 1) {
+        ts71(n / 2);
     }
+    cout << (n % 2);
 }
 
-int b(int b) {
-    if (b == 0) { return b; }
-    b
-}
-
-void f() {
-    int n;
-    cin >> n;
-    if (n == 0) { return ; }
-    f();
-    cout << n;
-}
 
 void ts7() {
     int x;
     cin >> x;
-    cout << ts71(x);
+    if (x == 0) { cout << 0; }
+    else { ts71(x); }
+}
+
+int ts81(int n) {
+    if (n == 1 or n == 2) {
+        return 1;
+    }
+    else {
+        return ts81(n - 1) + ts81(n - 2);
+    }
+}
+
+void ts8() {
+    int x;
+    cin >> x;
+    cout << ts81(x);
+}
+
+void ts91(int n) {
+    if (n < 10) {
+        cout << n;
+    }
+    else {
+        cout << n % 10 << " ";
+        ts91(n / 10);
+    }
+}
+
+void ts9() {
+    int n;
+    cin >> n;
+    ts91(n);
+
+}
+
+int ts121(int a, int b) {
+    if (b == 0) {
+        return a;
+    }
+    return ts121(b, a % b);
+}
+
+void ts12() {
+    int a, b;
+    cin >> a >> b;
+    cout << ts121(a, b);
+}
+
+int ts131(int a, int b) {
+    if (b == 0) {
+        return a;
+    }
+    return ts131(b, a % b);
+}
+
+void ts13() {
+    int a, b, c, s;
+    cin >> a >> b >> c;
+    s = ts131(a, ts131(b, c));
+    cout << s;
 }
 
 int main() {
@@ -135,5 +181,10 @@ int main() {
 
     //ts6();
     //ts7();
-    //f();
+    //ts8();
+    //ts9();
+    //ts10(); 
+
+    //ts12();
+    ts13();
 }
