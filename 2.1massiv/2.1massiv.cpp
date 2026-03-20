@@ -126,6 +126,7 @@ void ts1_6() {
 			cout << m[i] << " ";
 		}
 	}
+	delete[]m;
 }
 
 void ts1_7() {
