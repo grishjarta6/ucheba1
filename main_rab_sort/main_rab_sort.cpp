@@ -149,6 +149,7 @@ int part(int mq[], int low, int high) {
 		}
 	}
 	swap(mq[i + 1], mq[high]);
+	cout << i << endl;
 	return i + 1;
 }
 
