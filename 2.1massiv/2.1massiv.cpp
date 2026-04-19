@@ -1,7 +1,7 @@
 ﻿#include <iostream>
-#include <cmath>
-#include <iomanip>
-#include <string>
+//#include <cmath>
+//#include <iomanip>
+//#include <string>
 #define N 100
 using namespace std;
 
@@ -281,7 +281,7 @@ void ts2_5() {
 			//cout << ci << endl;
 			for (yi = 1; yi < p; yi += 1) {
 				m[x][yi - 1] = m[x][yi];
-				p - 1;
+				//p - 1;
 			}
 			m[x][n - 1] = ci;
 		}
@@ -315,7 +315,7 @@ void ts2_6() {
 			cout << ar[x][y] << " ";
 		}
 		cout << endl;
-	}
+	}//https://github.com/settings/tokens/new?description=VSCodium (read:user repo user:email workflow)&scopes=read:user,repo,user:email,workflow
 }
 
 void ts2_7() {
@@ -380,6 +380,6 @@ int main() {
 	//ts2_5();
 	//ts2_6();
 	//ts2_7();
-	//ts2_8();
+	ts2_8();
 
 }
