@@ -1,9 +1,9 @@
 ﻿//типы сортировок: пузырьком(a) / подсчетом(d) / быстрая сортировка.
 
 #include <iostream>
-#include <cmath>
-#include <iomanip>
-#include <string>
+//#include <cmath>
+//#include <iomanip>
+//#include <string>
 #include <chrono>
 #include <fstream>
 using namespace std;
