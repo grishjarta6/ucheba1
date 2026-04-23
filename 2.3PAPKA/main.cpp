@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <string>
 
 using namespace std;
 
@@ -49,9 +50,124 @@ void ts02() {
 }
 
 
+void ts03() {
+    ifstream in("input.txt");
+    ofstream out("output.txt");
+
+    if (!in.is_open() || !out.is_open()) {
+        return;
+    }
+
+    char* symbols = nullptr;
+    int size = 0;
+    int capacity = 16;
+    symbols = new char[capacity];
+
+    char ch;
+    while (in.get(ch)) {
+        // расширяем массив при необходимости
+        if (size >= capacity) {
+            capacity *= 2;
+            char* newSymbols = new char[capacity];
+            for (int i = 0; i < size; ++i) {
+                newSymbols[i] = symbols[i];
+            }
+            delete[] symbols;
+            symbols = newSymbols;
+        }
+        symbols[size++] = ch;
+
+        // проверяем последние три символа на "end"
+        if (size >= 3 && symbols[size-3] == 'e' && symbols[size-2] == 'n' && symbols[size-1] == 'd') {
+            break;
+        }
+    }
+
+    // вывод
+    out << size << '\n';
+    if (size > 0) {
+        out << symbols[0];
+        for (int i = 1; i < size; ++i) {
+            out << ' ' << symbols[i];
+        }
+        out << '\n';
+    }
+
+    delete[] symbols;
+    in.close();
+    out.close();
+}
+
+
+void ts04() {
+    ifstream in("input.txt");
+    ofstream out("output.txt");
+
+    if (!in.is_open() || !out.is_open()) {
+        return;
+    }
+
+    string line;
+    int ln = 0;
+
+    while (getline(in, line)) {
+        ln += 1;
+        if (ln == 3) {
+            continue; // пропускаем третью строку
+        }
+        out << line << '\n';
+    }
+
+    in.close();
+    out.close();
+}
+
+void ts05(){
+    ifstream in("input.txt");
+    ofstream out("output.txt");
+
+    if (!in.is_open() || !out.is_open()) {
+        return;
+    }
+
+    int lc = 0;
+    string line;
+    while (getline(in, line)) {
+        cout << line << endl;
+        lc += 1;
+    }
+
+    cout << lc << endl;
+
+    in.close();
+    out.close();
+    ifstream in2("input.txt");
+    ofstream out2("output.txt");
+
+    if (!in2.is_open() || !out2.is_open()) {
+        return;
+    }
+
+    int ln = 0;
+    string line2;
+    while (getline(in2, line2)) {
+        ln += 1;
+        cout << line2 << endl;
+        if (ln == lc) {
+            continue; // пропускаем третью строку
+        }
+        out2 << line2 << '\n';
+    }
+    in2.close();
+    out2.close();
+
+}
 
 int main(){
     //ts01();
     //ts02();
+    //ts03();
+    //ts04();
+    ts05();
     return 0;
 }
