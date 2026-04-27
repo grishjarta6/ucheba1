@@ -289,6 +289,58 @@ void ts25(){
     cout << c << endl;
 }
 
+void ts26(){
+    int c = 0;
+    char n = 'a';
+    while (n != '.'){
+        cin >> n;
+        if ((n >= 'a' and n <= 'z') or (n >= 'A' and n <= 'Z')) {
+            c += 1;
+        }
+
+    }
+    cout << c << endl;
+
+}
+
+void ts27() {
+    string s;
+    getline(cin, s);
+
+    for (size_t i = 0; i < s.size(); ++i) {
+        char ch = s[i];
+        if (ch >= 'A' && ch <= 'Z') {
+            s[i] = ch + 32;
+        }
+    }
+
+    cout << s;
+}
+
+int p28(char ch){
+    if ((ch == 'a') or (ch == 'e') or (ch == 'i') or (ch == 'o') or (ch == 'u') or (ch == 'y')){
+        return 1;
+    }
+    else if ((ch == 'A') or (ch == 'E') or (ch == 'I') or (ch == 'O') or (ch == 'U') or (ch == 'Y')){
+        return 1;
+    }
+    else{
+        return 0;
+    }
+}
+
+void ts28(){
+    int c = 0;
+    char n = 'a';
+    while (n != '.') {
+        cin >> n;
+        if (p28(n) == 1){
+            c += 1;
+        }
+    }
+    cout << c << endl;
+}
+
 int main(){
     //fstream
 
@@ -307,6 +359,9 @@ int main(){
     //ts22();
     //ts23();
     //ts24();
-    ts25();
+    //ts25();
+    //ts26();
+    //ts27();
+    //ts28();
     return 0;
 }
