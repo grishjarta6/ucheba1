@@ -1,0 +1,25 @@
+#include <iostream>
+//#include <fstream>
+#include <string>
+//#include <cstdlib>
+#include <Windows.h>
+using namespace std;
+
+int main() {
+	int i = 1, t = 5, c = 0;
+	wstring s = L"main.exe";
+	while (i != t) {
+		wstring g = to_wstring(i);
+		wstring f = L"main" + g + L".exe";
+		//ofstream out(f);
+		i += 1;
+		//t += 1;
+		
+		//out << s;
+		//out.close();
+		//system(f.c_str());
+		CopyFile(s.c_str(), f.c_str(), FALSE);
+		cout << "copy" << i << endl;
+		ShellExecute(NULL, L"open", f.c_str(), NULL, NULL, SW_SHOW);
+	}
+}
