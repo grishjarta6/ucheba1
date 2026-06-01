@@ -13,7 +13,7 @@ int main() {
 		wstring f = L"main" + g + L".exe";
 		//ofstream out(f);
 		i += 1;
-		//t += 1;
+		t += 1;
 		
 		//out << s;
 		//out.close();
