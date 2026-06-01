@@ -67,6 +67,8 @@ double per13(l13 l){
 void ts13(){
     double s, p;
     l13 l;
+    l13* l2=&l;
+
     cout << "p1 x" << endl;
     cin >> l.p1.x;
     cout << "p1 y" << endl;
@@ -78,7 +80,7 @@ void ts13(){
 
     s = pl13(l);
     p = per13(l);
-
+    //cout << l2->p2.x;
     cout << fixed << setprecision(6) << s << endl;
     cout << fixed << setprecision(6) << p << endl;
 }
@@ -196,18 +198,37 @@ void ts23(){
 
 }
 
+void rev(int A[], int size) {
+    for (int i = 0; i < size / 2; ++i) {
+        int temp = A[i];
+        A[i] = A[size - 1 - i];
+        A[size - 1 - i] = temp;
+    }
+}
+
+void ts24(){
+    int arr[100];
+    int n, i;
+    for(i = 0; i <= n; i += 1){cin >> arr[i];}
+    rev(arr, n);
+    for(i = 0; i <= n; i += 1){cout << arr[i] << " ";}
+}
+
+
 int main(){
     //структуры
 
     //ts11();
     //ts12();
     //ts13();
-    ts14();
+    //ts14();
 
     //указатели
 
     //ts21();
     //ts22();
     //ts23();
+    //ts24();
+
     return 0;
 }
