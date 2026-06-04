@@ -150,18 +150,21 @@ void zc(){
                     b = st.read();
                     st.del();
                     st.push(a + b);
+                    break;
                 case(2):
                     a = st.read();
                     st.del();
                     b = st.read();
                     st.del();
-                    st.push(a - b);
+                    st.push(b - a);
+                    break;
                 case(3):
                     a = st.read();
                     st.del();
                     b = st.read();
                     st.del();
                     st.push(a * b);
+                    break;
                 default:
                     cout << "wrong nmber" << endl;
             }
