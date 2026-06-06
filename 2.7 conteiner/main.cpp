@@ -21,7 +21,7 @@ struct stek{
     }
 
     void del(){
-        if(top_indx != -1){top_indx -= 1;}//следующий вызов push удалит элемент(залупа но быстрее)
+        if(top_indx != -1){top_indx -= 1;}//следующий вызов push удалит элемент
         else {cout << "stek is clear" << endl;}
     }
 
