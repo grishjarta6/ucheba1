@@ -1,438 +1,482 @@
 #include <iostream>
-#include <fstream>
 #include <vector>
 #include <string>
 #include <cmath>
 #include <algorithm>
-#include <cstdlib>
-#include <ctime>
-#include <map>
+#include <thread>
+#include <chrono>
+#include <atomic>
 
 using namespace std;
 
-// ========== Параметры экрана и мира ==========
-const int SCREEN_WIDTH  = 120;
-const int SCREEN_HEIGHT = 40;
-const float PI          = 3.14159265358979f;
-const float FOV         = PI / 3.0f;          // горизонтальный угол обзора
-const float VERTICAL_FOV = PI / 3.0f;         // вертикальный угол обзора
-const float EYE_HEIGHT   = 0.5f;              // высота камеры над полом
-const float CEILING_HEIGHT = 1.0f;            // высота потолка
-const float GRAVITY       = 15.0f;            // ускорение свободного падения
-const float PLAYER_SPEED  = 3.0f;
-const float PLAYER_ROT_SPEED = 2.0f;
-const float PROJECTILE_SPEED = 10.0f;
-const float LIGHT_FALLOFF_WALL   = 0.15f;
-const float LIGHT_FALLOFF_FLOOR  = 0.1f;
+// ---------- настройки движка ----------
+const int SCREEN_WIDTH  = 80;
+const int SCREEN_HEIGHT = 24;
+const double LIGHT_RADIUS = 8.0;           // радиус фонарика (клетки)
+const double GRAVITY      = 0.002;         // ускорение свободного падения
+const double FRAME_DT     = 1.0;           // шаг времени
+const double MOVE_SPEED   = 0.05;          // линейная скорость игрока
+const double ROT_SPEED    = 0.03;          // угловая скорость игрока
 
-// ========== Вспомогательные структуры ==========
-struct Vec2 { float x, y; };
-struct Vec3 { float r, g, b; };
+// ---------- ANSI-управление ----------
+string colorCode(int index) { return "\033[38;5;" + to_string(index) + "m"; }
+string resetColor()       { return "\033[0m"; }
+string hideCursor()       { return "\033[?25l"; }
+string showCursor()       { return "\033[?25h"; }
+string clearScreen()      { return "\033[2J\033[H"; }
 
-// ========== ANSI‑управление консолью ==========
-void clearScreen() {
-    cout << "\033[2J\033[H";
-}
-void gotoxy(int x, int y) {
-    cout << "\033[" << y << ";" << x << "H";
-}
-void setBackground(int r, int g, int b) {
-    // clamp
-    if (r < 0) r = 0; if (r > 255) r = 255;
-    if (g < 0) g = 0; if (g > 255) g = 255;
-    if (b < 0) b = 0; if (b > 255) b = 255;
-    cout << "\033[48;2;" << r << ";" << g << ";" << b << "m";
-}
-void setForeground(int r, int g, int b) {
-    if (r < 0) r = 0; if (r > 255) r = 255;
-    if (g < 0) g = 0; if (g > 255) g = 255;
-    if (b < 0) b = 0; if (b > 255) b = 255;
-    cout << "\033[38;2;" << r << ";" << g << ";" << b << "m";
-}
-void resetColor() {
-    cout << "\033[0m";
+// градиент яркости
+char brightnessChar(double brightness) {
+    static const string grad = " .:-=+*#%@";
+    if (brightness <= 0.0) return ' ';
+    if (brightness >= 1.0) return '@';
+    int idx = (int)(brightness * (grad.size() - 1));
+    return grad[idx];
 }
 
-// ========== Типы стен ==========
-struct WallType {
-    Vec3 color;
+// ---------- карта ----------
+vector<string> mapGrid;
+int mapWidth = 0, mapHeight = 0;
+
+bool isWall(int x, int y) {
+    if (x < 0 || x >= mapWidth || y < 0 || y >= mapHeight) return true;
+    return mapGrid[y][x] == '#' || mapGrid[y][x] == 'D';
+}
+
+// ---------- игрок ----------
+struct Player {
+    double posX, posY;
+    double dirX, dirY;
+    double planeX, planeY;
 };
-map<char, WallType> wallTypes;
 
-void initWallTypes() {
-    wallTypes['#'] = { { 128, 128, 128 } };   // серая стена
-    wallTypes['D'] = { { 139, 69, 19 } };     // коричневая
-    wallTypes['='] = { { 100, 100, 100 } };   // ещё одна
-}
-
-// ========== Карта уровня ==========
-class Map {
-public:
-    vector<string> grid;
+// ---------- текстуры (спрайты объектов) ----------
+struct Texture {
+    vector<string> data;       // строки текстуры
     int width, height;
-
-    Map(const string& filename) {
-        ifstream file(filename);
-        string line;
-        while (getline(file, line)) {
-            grid.push_back(line);
-        }
-        height = (int)grid.size();
-        width  = (height > 0) ? (int)grid[0].length() : 0;
-    }
-
-    char getCell(int x, int y) const {
-        if (x < 0 || x >= width || y < 0 || y >= height) return '#';
-        return grid[y][x];
-    }
-
-    bool isWall(int x, int y) const {
-        char c = getCell(x, y);
-        return wallTypes.find(c) != wallTypes.end();
-    }
-
-    WallType getWallType(int x, int y) const {
-        char c = getCell(x, y);
-        auto it = wallTypes.find(c);
-        if (it != wallTypes.end()) return it->second;
-        return { {200,200,200} };
+    Texture(const vector<string>& d) : data(d) {
+        height = (int)data.size();
+        width = 0;
+        for (auto& row : data)
+            if ((int)row.size() > width) width = (int)row.size();
     }
 };
 
-// ========== Трассировка луча (DDA) ==========
-struct HitInfo {
-    float perpDist;
-    int mapX, mapY;
-    int side;          // 0 – вертикальная грань, 1 – горизонтальная
-    WallType wall;
+// предопределённые текстуры
+Texture texCube({
+    "  ####  ",
+    " ###### ",
+    "########",
+    "########",
+    " ###### ",
+    "  ####  "
+});
+
+Texture texSphere({
+    "   OO   ",
+    " OOOOOO ",
+    "OOOOOOOO",
+    "OOOOOOOO",
+    " OOOOOO ",
+    "   OO   "
+});
+
+// ---------- буфер экрана ----------
+struct ScreenBuffer {
+    char   chars[SCREEN_HEIGHT][SCREEN_WIDTH];
+    int    colors[SCREEN_HEIGHT][SCREEN_WIDTH];
+    double zBuffer[SCREEN_WIDTH];
+
+    ScreenBuffer() {
+        for (int y = 0; y < SCREEN_HEIGHT; ++y)
+            for (int x = 0; x < SCREEN_WIDTH; ++x) {
+                chars[y][x] = ' ';
+                colors[y][x] = 0;
+            }
+        for (int x = 0; x < SCREEN_WIDTH; ++x) zBuffer[x] = 1e30;
+    }
 };
 
-HitInfo castRay(const Map& map, float playerX, float playerY, float rayAngle) {
-    float dirX = cos(rayAngle);
-    float dirY = sin(rayAngle);
-
-    int mapX = int(playerX);
-    int mapY = int(playerY);
-
-    float deltaDistX = fabs(1.0f / dirX);
-    float deltaDistY = fabs(1.0f / dirY);
-
-    float sideDistX, sideDistY;
-    int stepX, stepY;
-
-    if (dirX < 0) { stepX = -1; sideDistX = (playerX - mapX) * deltaDistX; }
-    else          { stepX =  1; sideDistX = (mapX + 1.0f - playerX) * deltaDistX; }
-
-    if (dirY < 0) { stepY = -1; sideDistY = (playerY - mapY) * deltaDistY; }
-    else          { stepY =  1; sideDistY = (mapY + 1.0f - playerY) * deltaDistY; }
-
-    bool hit = false;
-    int side;
-    while (!hit) {
-        if (sideDistX < sideDistY) {
-            sideDistX += deltaDistX;
-            mapX += stepX;
-            side = 0;
-        } else {
-            sideDistY += deltaDistY;
-            mapY += stepY;
-            side = 1;
-        }
-        if (map.isWall(mapX, mapY)) hit = true;
-    }
-
-    float perpDist;
-    if (side == 0)
-        perpDist = (mapX - playerX + (1.0f - stepX) / 2.0f) / dirX;
-    else
-        perpDist = (mapY - playerY + (1.0f - stepY) / 2.0f) / dirY;
-
-    HitInfo info;
-    info.perpDist = perpDist;
-    info.mapX = mapX;
-    info.mapY = mapY;
-    info.side = side;
-    info.wall = map.getWallType(mapX, mapY);
-    return info;
-}
-
-// ========== Таблица тангенсов для пола/потолка ==========
-float tanTable[SCREEN_HEIGHT];
-
-void initTanTable() {
-    float halfH = SCREEN_HEIGHT / 2.0f;
-    for (int y = 0; y < SCREEN_HEIGHT; y++) {
-        float angle = ((y - halfH) / halfH) * (VERTICAL_FOV / 2.0f);
-        tanTable[y] = tan(angle);
-    }
-}
-
-// ========== Освещение (фонарик) ==========
-float lightFactorWall(float dist) {
-    if (dist <= 0.0f) return 1.0f;
-    float f = 1.0f / (1.0f + dist * LIGHT_FALLOFF_WALL);
-    if (f < 0.0f) f = 0.0f;
-    if (f > 1.0f) f = 1.0f;
-    return f;
-}
-float lightFactorFloor(float dist) {
-    if (dist <= 0.0f) return 1.0f;
-    float f = 1.0f / (1.0f + dist * LIGHT_FALLOFF_FLOOR);
-    if (f < 0.0f) f = 0.0f;
-    if (f > 1.0f) f = 1.0f;
-    return f;
-}
-
-// ========== Объекты (базовый класс) ==========
+// ---------- базовый объект ----------
 class Object {
 public:
-    float x, y, z;        // z – высота над полом
-    float vx, vy, vz;
-    float radius;
-    char spriteChar;
-    Vec3 color;
-    int health;
-    bool active;
+    double x, y, z;          // позиция (z – высота над полом)
+    double vx, vy, vz;       // скорость
+    double health;
+    char   glyph;            // символ по умолчанию (если нет текстуры)
+    int    color;            // индекс ANSI 256
+    bool   alive;
+    Texture* texture;        // если не nullptr – объект текстурирован
 
-    Object(float x_, float y_, char ch, Vec3 col, float rad = 0.3f)
-        : x(x_), y(y_), z(0.0f), vx(0), vy(0), vz(0),
-          radius(rad), spriteChar(ch), color(col), health(1), active(true) {}
+    Object(double px, double py, double pz, char g, int col, Texture* tex = nullptr)
+        : x(px), y(py), z(pz), vx(0), vy(0), vz(0), health(1), glyph(g), color(col), alive(true), texture(tex) {}
 
-    virtual ~Object() {}
+    virtual void update(float dt, class Game* game) {}
+    virtual void onCollide(Object* other) {}
 
-    virtual void Update(float dt) {
-        vz -= GRAVITY * dt;
-        x += vx * dt;
-        y += vy * dt;
-        z += vz * dt;
-        if (z < 0.0f) { z = 0.0f; vz = 0.0f; }
-    }
+    void applyPhysics(float dt, Game* game);
+    void moveX(float dt, Game* game);
+    void moveY(float dt, Game* game);
 };
 
-// ========== Игрок (управляется с клавиатуры) ==========
-class Player : public Object {
+class Game {
 public:
-    float angle;
-
-    Player(float x_, float y_, float ang_)
-        : Object(x_, y_, 'P', {255,255,0}, 0.2f), angle(ang_) {
-        z = 0.0f; // камера всегда на полу
-    }
-
-    void Update(float dt) override {
-        // Гравитация на игрока не действует
-        x += vx * dt;
-        y += vy * dt;
-        // wall collision разрешается отдельно в main
-    }
-};
-
-// ========== Снаряд ==========
-class Projectile : public Object {
-public:
-    Projectile(float x_, float y_, float z_, float direction)
-        : Object(x_, y_, '*', {255,255,0}, 0.1f) {
-        z = z_;
-        vx = cos(direction) * PROJECTILE_SPEED;
-        vy = sin(direction) * PROJECTILE_SPEED;
-        vz = 0.0f;
-    }
-
-    void Update(float dt) override {
-        Object::Update(dt);
-        // снаряд будет удалён при столкновении со стеной в main
-    }
-};
-
-// ========== Главный цикл ==========
-int main() {
-    // ---------- инициализация ----------
-    initWallTypes();
-    initTanTable();
-    Map map("map.txt");   // файл с картой должен существовать
-
-    Player player(2.5f, 2.5f, 0.0f);
+    Player player;
     vector<Object*> objects;
+    ScreenBuffer screen;
 
-    // несколько статических объектов
-    objects.push_back(new Object(4.0f, 3.0f, 'M', {255,0,0}, 0.3f));
-    objects.push_back(new Object(6.0f, 5.0f, 'B', {0,255,0}, 0.3f));
+    Game() {
+        // камера: центр комнаты, смотрит вправо
+        player.posX = 7.5;
+        player.posY = 5.5;
+        player.dirX = 1.0;
+        player.dirY = 0.0;
+        player.planeX = 0.0;
+        player.planeY = 0.66;
+    }
 
-    float dt = 0.05f;       // фиксированный шаг на кадр
-    float focalLen = (SCREEN_HEIGHT / 2.0f) / tan(VERTICAL_FOV / 2.0f);
-    float zBuffer[SCREEN_WIDTH];
-    bool running = true;
+    void loadMap(const vector<string>& data) {
+        mapGrid = data;
+        mapWidth  = (int)mapGrid[0].size();
+        mapHeight = (int)mapGrid.size();
+    }
 
-    // ---------- игровой цикл ----------
-    while (running) {
-        // 1. Очистка и заливка пола / потолка
-        clearScreen();
-        for (int y = 0; y < SCREEN_HEIGHT; y++) {
-            int halfH = SCREEN_HEIGHT / 2;
-            float rowDist;
-            Vec3 baseColor;
-            if (y > halfH) {   // пол
-                float tanVal = tanTable[y];
-                if (fabs(tanVal) < 0.0001f) tanVal = 0.0001f;
-                rowDist = EYE_HEIGHT / tanVal;
-                baseColor = { 80, 80, 80 };
-            } else {           // потолок
-                float tanVal = -tanTable[y];
-                if (tanVal < 0.0001f) tanVal = 0.0001f;
-                rowDist = (CEILING_HEIGHT - EYE_HEIGHT) / tanVal;
-                baseColor = { 60, 60, 100 };
-            }
-            float light = lightFactorFloor(rowDist);
-            int r = int(baseColor.r * light);
-            int g = int(baseColor.g * light);
-            int b = int(baseColor.b * light);
-            setBackground(r, g, b);
-            gotoxy(1, y + 1);
-            for (int i = 0; i < SCREEN_WIDTH; i++) cout << ' ';
-        }
-        resetColor();
+    void update(float dt) {
+        for (auto obj : objects)
+            if (obj->alive) obj->update(dt, this);
 
-        // 2. Стены
-        for (int x = 0; x < SCREEN_WIDTH; x++) {
-            float rayAngle = player.angle - FOV/2.0f +
-                             (x / (float)SCREEN_WIDTH) * FOV;
-            HitInfo hit = castRay(map, player.x, player.y, rayAngle);
-            zBuffer[x] = hit.perpDist;
-
-            int lineHeight = (int)(SCREEN_HEIGHT / hit.perpDist);
-            int wallTop    = max(0, (SCREEN_HEIGHT - lineHeight) / 2);
-            int wallBottom = min(SCREEN_HEIGHT - 1, wallTop + lineHeight - 1);
-
-            float light = lightFactorWall(hit.perpDist);
-            Vec3 col = hit.wall.color;
-            int r = int(col.r * light);
-            int g = int(col.g * light);
-            int b = int(col.b * light);
-
-            for (int y = wallTop; y <= wallBottom; y++) {
-                gotoxy(x + 1, y + 1);
-                setBackground(r, g, b);
-                cout << ' ';
-            }
-        }
-        resetColor();
-
-        // 3. Спрайты (объекты)
-        sort(objects.begin(), objects.end(),
-             [&](Object* a, Object* b) {
-                 float da = (a->x - player.x)*(a->x - player.x) +
-                            (a->y - player.y)*(a->y - player.y);
-                 float db = (b->x - player.x)*(b->x - player.x) +
-                            (b->y - player.y)*(b->y - player.y);
-                 return da > db;   // дальние — первыми
-             });
-
-        for (auto obj : objects) {
-            if (!obj->active) continue;
-            float dx = obj->x - player.x;
-            float dy = obj->y - player.y;
-            float dist = sqrt(dx*dx + dy*dy);
-
-            float spriteAngle = atan2(dy, dx) - player.angle;
-            while (spriteAngle >  PI) spriteAngle -= 2.0f * PI;
-            while (spriteAngle < -PI) spriteAngle += 2.0f * PI;
-
-            if (fabs(spriteAngle) > FOV/2.0f + 0.2f) continue;
-
-            float screenX = (SCREEN_WIDTH / 2.0f) *
-                            (1.0f + tan(spriteAngle) / tan(FOV/2.0f));
-            int spriteScreenX = int(screenX);
-            if (spriteScreenX < 0 || spriteScreenX >= SCREEN_WIDTH) continue;
-
-            float invDist = 1.0f / dist;
-            float bottomY = SCREEN_HEIGHT/2.0f -
-                            (EYE_HEIGHT - obj->z) * invDist * focalLen;
-            float topY    = SCREEN_HEIGHT/2.0f -
-                            (EYE_HEIGHT - (obj->z + 1.0f)) * invDist * focalLen;
-            int drawStartY = max(0, (int)(topY));
-            int drawEndY   = min(SCREEN_HEIGHT - 1, (int)(bottomY));
-
-            float light = lightFactorWall(dist);
-            int r = int(obj->color.r * light);
-            int g = int(obj->color.g * light);
-            int b = int(obj->color.b * light);
-
-            for (int y = drawStartY; y <= drawEndY; y++) {
-                if (dist < zBuffer[spriteScreenX]) {
-                    gotoxy(spriteScreenX + 1, y + 1);
-                    setBackground(r, g, b);
-                    setForeground(0, 0, 0);
-                    cout << obj->spriteChar;
+        // столкновения между объектами
+        for (size_t i = 0; i < objects.size(); ++i) {
+            if (!objects[i]->alive) continue;
+            for (size_t j = i + 1; j < objects.size(); ++j) {
+                if (!objects[j]->alive) continue;
+                double dx = objects[i]->x - objects[j]->x;
+                double dy = objects[i]->y - objects[j]->y;
+                if (sqrt(dx*dx + dy*dy) < 0.5) {
+                    objects[i]->onCollide(objects[j]);
+                    objects[j]->onCollide(objects[i]);
                 }
             }
         }
-        resetColor();
-
-        // 4. Ввод команды
-        gotoxy(1, SCREEN_HEIGHT + 1);
-        cout << "Command (w/a/s/d/q/e/space/x): ";
-        char cmd;
-        cin >> cmd;
-
-        // 5. Обработка движения игрока
-        float moveSpeed = PLAYER_SPEED * dt;
-        float rotSpeed  = PLAYER_ROT_SPEED * dt;
-        float moveX = 0.0f, moveY = 0.0f;
-        switch (cmd) {
-            case 'w': moveX =  cos(player.angle) * moveSpeed;
-                      moveY =  sin(player.angle) * moveSpeed; break;
-            case 's': moveX = -cos(player.angle) * moveSpeed;
-                      moveY = -sin(player.angle) * moveSpeed; break;
-            case 'a': moveX =  cos(player.angle - PI/2.0f) * moveSpeed;
-                      moveY =  sin(player.angle - PI/2.0f) * moveSpeed; break;
-            case 'd': moveX =  cos(player.angle + PI/2.0f) * moveSpeed;
-                      moveY =  sin(player.angle + PI/2.0f) * moveSpeed; break;
-            case 'q': player.angle -= rotSpeed; break;
-            case 'e': player.angle += rotSpeed; break;
-            case ' ': {
-                Projectile* proj = new Projectile(player.x, player.y,
-                                                  player.z + 0.5f, player.angle);
-                objects.push_back(proj);
-                break;
-            }
-            case 'x': running = false; break;
-        }
-
-        // коллизия игрока со стенами (покадровое смещение)
-        float newX = player.x + moveX;
-        float newY = player.y + moveY;
-        if (!map.isWall(int(newX), int(player.y))) player.x = newX;
-        if (!map.isWall(int(player.x), int(newY))) player.y = newY;
-
-        // 6. Обновление объектов
-        for (auto obj : objects) {
-            if (!obj->active) continue;
-            // сохраняем старые координаты на случай отката
-            float oldX = obj->x, oldY = obj->y;
-            obj->Update(dt);
-
-            // простая коллизия со стенами – если попали в стену, возвращаем объект
-            if (map.isWall(int(obj->x), int(obj->y))) {
-                obj->x = oldX;
-                obj->y = oldY;
-                // для снарядов – деактивируем при касании стены
-                if (dynamic_cast<Projectile*>(obj)) {
-                    obj->active = false;
-                }
-            }
-
-            // удаляем объекты, улетевшие далеко или с нулевым здоровьем
-            if (obj->health <= 0) obj->active = false;
-        }
-
-        // удаляем неактивные объекты
-        objects.erase(
-            remove_if(objects.begin(), objects.end(),
-                      [](Object* o) { return !o->active; }),
+        objects.erase(remove_if(objects.begin(), objects.end(),
+            [](Object* o) { if (!o->alive) { delete o; return true; } return false; }),
             objects.end());
     }
 
-    // очистка памяти
-    for (auto o : objects) delete o;
+    void render() {
+        screen = ScreenBuffer();
+        renderWalls();
+        renderFloorCeiling();
+        renderSprites();
+        drawScreen();
+    }
+
+    void moveForward(double amount) {
+        double newX = player.posX + player.dirX * amount;
+        double newY = player.posY + player.dirY * amount;
+        if (!isWall((int)newX, (int)newY)) {
+            player.posX = newX;
+            player.posY = newY;
+        }
+    }
+    void moveSide(double amount) {
+        double newX = player.posX + player.planeX * amount;
+        double newY = player.posY + player.planeY * amount;
+        if (!isWall((int)newX, (int)newY)) {
+            player.posX = newX;
+            player.posY = newY;
+        }
+    }
+    void rotate(double angle) {
+        double oldDirX = player.dirX;
+        player.dirX = player.dirX * cos(angle) - player.dirY * sin(angle);
+        player.dirY = oldDirX * sin(angle) + player.dirY * cos(angle);
+        double oldPlaneX = player.planeX;
+        player.planeX = player.planeX * cos(angle) - player.planeY * sin(angle);
+        player.planeY = oldPlaneX * sin(angle) + player.planeY * cos(angle);
+    }
+
+private:
+    void renderWalls();
+    void renderFloorCeiling();
+    void renderSprites();
+    void drawScreen();
+};
+
+// ---------- физика объекта ----------
+void Object::applyPhysics(float dt, Game* game) {
+    vz -= GRAVITY * dt;
+    z += vz * dt;
+    if (z < 0.0) { z = 0.0; vz = 0.0; }
+    moveX(dt, game);
+    moveY(dt, game);
+}
+void Object::moveX(float dt, Game* game) {
+    double newX = x + vx * dt;
+    if (!isWall((int)newX, (int)y)) x = newX; else vx = 0.0;
+}
+void Object::moveY(float dt, Game* game) {
+    double newY = y + vy * dt;
+    if (!isWall((int)x, (int)newY)) y = newY; else vy = 0.0;
+}
+
+// ---------- конкретные объекты ----------
+class Cube : public Object {
+public:
+    Cube(double px, double py, double pz) : Object(px, py, pz, 'C', 160, &texCube) {}
+    void update(float dt, Game* game) override { applyPhysics(dt, game); }
+};
+
+class Sphere : public Object {
+public:
+    Sphere(double px, double py, double pz) : Object(px, py, pz, 'O', 226, &texSphere) {}
+    void update(float dt, Game* game) override { applyPhysics(dt, game); }
+};
+
+// ---------- рендер стен ----------
+void Game::renderWalls() {
+    for (int x = 0; x < SCREEN_WIDTH; ++x) {
+        double cameraX = 2.0 * x / (double)SCREEN_WIDTH - 1.0;
+        double rayDirX = player.dirX + player.planeX * cameraX;
+        double rayDirY = player.dirY + player.planeY * cameraX;
+
+        int mapX = (int)player.posX, mapY = (int)player.posY;
+        double deltaDistX = (rayDirX == 0) ? 1e30 : abs(1.0 / rayDirX);
+        double deltaDistY = (rayDirY == 0) ? 1e30 : abs(1.0 / rayDirY);
+
+        int stepX, stepY;
+        double sideDistX, sideDistY;
+        if (rayDirX < 0) { stepX = -1; sideDistX = (player.posX - mapX) * deltaDistX; }
+        else            { stepX = 1;  sideDistX = (mapX + 1.0 - player.posX) * deltaDistX; }
+        if (rayDirY < 0) { stepY = -1; sideDistY = (player.posY - mapY) * deltaDistY; }
+        else            { stepY = 1;  sideDistY = (mapY + 1.0 - player.posY) * deltaDistY; }
+
+        int side = 0;
+        bool hit = false;
+        while (!hit) {
+            if (sideDistX < sideDistY) {
+                sideDistX += deltaDistX; mapX += stepX; side = 0;
+            } else {
+                sideDistY += deltaDistY; mapY += stepY; side = 1;
+            }
+            if (isWall(mapX, mapY)) hit = true;
+        }
+
+        double perpDist = (side == 0) ? (sideDistX - deltaDistX) : (sideDistY - deltaDistY);
+        screen.zBuffer[x] = perpDist;
+
+        int lineHeight = (int)(SCREEN_HEIGHT / perpDist);
+        int drawStart = -lineHeight / 2 + SCREEN_HEIGHT / 2;
+        if (drawStart < 0) drawStart = 0;
+        int drawEnd = lineHeight / 2 + SCREEN_HEIGHT / 2;
+        if (drawEnd >= SCREEN_HEIGHT) drawEnd = SCREEN_HEIGHT - 1;
+
+        double brightness = 1.0 - min(1.0, perpDist / LIGHT_RADIUS);
+        if (brightness < 0.0) brightness = 0.0;
+        int grayVal = (int)(brightness * 255.0);
+        int colorIdx = 232 + (grayVal * 24) / 256;
+
+        // разные символы для осей X и Y
+        char wallChar;
+        if (side == 0) wallChar = '|';   // стена по X
+        else           wallChar = '#';   // стена по Y
+        // яркостный символ накладываем поверх, чтобы сохранить глубину
+        char brightSym = brightnessChar(brightness);
+        if (brightSym != ' ') wallChar = brightSym;
+
+        for (int y = drawStart; y <= drawEnd; ++y) {
+            screen.chars[y][x] = wallChar;
+            screen.colors[y][x] = colorIdx;
+        }
+    }
+}
+
+// ---------- пол и потолок ----------
+void Game::renderFloorCeiling() {
+    double posX = player.posX, posY = player.posY;
+    double dirX = player.dirX, dirY = player.dirY;
+    double planeX = player.planeX, planeY = player.planeY;
+
+    for (int y = 0; y < SCREEN_HEIGHT; ++y) {
+        bool isFloor = (y > SCREEN_HEIGHT / 2);
+        double rowDistance = (double)SCREEN_HEIGHT / (2.0 * y - SCREEN_HEIGHT);
+        if (!isFloor) rowDistance = -rowDistance;
+
+        double stepX = rowDistance * (planeX * 2) / SCREEN_WIDTH;
+        double stepY = rowDistance * (planeY * 2) / SCREEN_WIDTH;
+        double floorX = posX + rowDistance * dirX;
+        double floorY = posY + rowDistance * dirY;
+
+        for (int x = 0; x < SCREEN_WIDTH; ++x) {
+            int cellX = (int)floorX, cellY = (int)floorY;
+            if (isWall(cellX, cellY)) continue;
+            if (screen.chars[y][x] != ' ') continue;
+
+            double dist = sqrt(pow(floorX - posX, 2) + pow(floorY - posY, 2));
+            double brightness = 1.0 - min(1.0, dist / LIGHT_RADIUS);
+            if (brightness < 0.0) brightness = 0.0;
+
+            char c = isFloor ? brightnessChar(brightness * 0.6) : ' ';
+            int colorIdx = isFloor ? (232 + (int)(brightness * 24 / 256)) : 0;
+
+            screen.chars[y][x] = c;
+            screen.colors[y][x] = colorIdx;
+
+            floorX += stepX;
+            floorY += stepY;
+        }
+    }
+}
+
+// ---------- рендер спрайтов с текстурами ----------
+void Game::renderSprites() {
+    // сбор и сортировка по расстоянию
+    vector<pair<double, Object*>> sprites;
+    for (auto obj : objects) {
+        if (!obj->alive) continue;
+        double dx = obj->x - player.posX;
+        double dy = obj->y - player.posY;
+        sprites.push_back({dx*dx + dy*dy, obj});
+    }
+    sort(sprites.begin(), sprites.end(),
+        [](const auto& a, const auto& b) { return a.first > b.first; });
+
+    double invDet = 1.0 / (player.planeX * player.dirY - player.dirX * player.planeY);
+
+    for (auto& [_, obj] : sprites) {
+        double spriteX = obj->x - player.posX;
+        double spriteY = obj->y - player.posY;
+        double transformX = invDet * (player.dirY * spriteX - player.dirX * spriteY);
+        double transformY = invDet * (-player.planeY * spriteX + player.planeX * spriteY);
+        if (transformY <= 0.0) continue;
+
+        int spriteScreenX = (int)((SCREEN_WIDTH / 2.0) * (1.0 + transformX / transformY));
+        // размер спрайта на экране (пропорционально расстоянию)
+        int spriteHeight = abs((int)(SCREEN_HEIGHT / transformY));
+        int spriteWidth  = spriteHeight;   // квадратный спрайт
+
+        int drawStartY = -spriteHeight / 2 + SCREEN_HEIGHT / 2 + (int)(obj->z * SCREEN_HEIGHT / transformY);
+        int drawEndY   =  spriteHeight / 2 + SCREEN_HEIGHT / 2 + (int)(obj->z * SCREEN_HEIGHT / transformY);
+        int drawStartX = -spriteWidth / 2 + spriteScreenX;
+        int drawEndX   =  spriteWidth / 2 + spriteScreenX;
+
+        // освещение: затухание с расстоянием
+        double brightness = 1.0 - min(1.0, transformY / LIGHT_RADIUS);
+        if (brightness < 0.0) brightness = 0.0;
+        int colorIdx = obj->color;
+
+        if (obj->texture != nullptr) {
+            // текстурированный спрайт
+            Texture& tex = *obj->texture;
+            for (int stripe = drawStartX; stripe < drawEndX; ++stripe) {
+                if (stripe < 0 || stripe >= SCREEN_WIDTH) continue;
+                if (transformY > screen.zBuffer[stripe]) continue;
+
+                // координата текстуры по X
+                double texX = (double)(stripe - drawStartX) / spriteWidth;
+                int texCol = min((int)(texX * tex.width), tex.width - 1);
+
+                for (int y = drawStartY; y < drawEndY; ++y) {
+                    if (y < 0 || y >= SCREEN_HEIGHT) continue;
+                    if (screen.chars[y][stripe] != ' ') continue; // не затираем стены
+
+                    double texY = (double)(y - drawStartY) / spriteHeight;
+                    int texRow = min((int)(texY * tex.height), tex.height - 1);
+
+                    char c = tex.data[texRow][texCol];
+                    if (c != ' ') {
+                        // уменьшаем яркость символа в зависимости от освещения
+                        char brightSym = brightnessChar(brightness);
+                        // если текстура не прозрачная, заменяем на символ с учётом яркости
+                        if (brightSym != ' ') c = brightSym;
+                        screen.chars[y][stripe] = c;
+                        screen.colors[y][stripe] = colorIdx;
+                    }
+                }
+            }
+        } else {
+            // обычный спрайт (один символ)
+            for (int stripe = drawStartX; stripe < drawEndX; ++stripe) {
+                if (stripe < 0 || stripe >= SCREEN_WIDTH) continue;
+                if (transformY > screen.zBuffer[stripe]) continue;
+                for (int y = drawStartY; y < drawEndY; ++y) {
+                    if (y < 0 || y >= SCREEN_HEIGHT) continue;
+                    screen.chars[y][stripe] = obj->glyph;
+                    screen.colors[y][stripe] = colorIdx;
+                }
+            }
+        }
+    }
+}
+
+// ---------- вывод кадра ----------
+void Game::drawScreen() {
+    cout << clearScreen() << hideCursor();
+    string output;
+    for (int y = 0; y < SCREEN_HEIGHT; ++y) {
+        for (int x = 0; x < SCREEN_WIDTH; ++x) {
+            output += colorCode(screen.colors[y][x]);
+            output += screen.chars[y][x];
+        }
+        output += resetColor() + "\n";
+    }
+    cout << output << flush;
+    cout << showCursor();
+}
+
+// ---------- поток ввода (построчный с Enter) ----------
+atomic<char> inputCmd{0};
+
+void inputThreadFunc() {
+    string line;
+    while (getline(cin, line)) {
+        if (!line.empty()) inputCmd.store(line[0]);
+    }
+}
+
+// ---------- главный цикл ----------
+int main() {
+    // пустая комната
+    vector<string> level = {
+        "################",
+        "#              #",
+        "#              #",
+        "#              #",
+        "#              #",
+        "#              #",
+        "#              #",
+        "#              #",
+        "################"
+    };
+
+    Game game;
+    game.loadMap(level);
+
+    // куб и шар перед игроком
+    game.objects.push_back(new Cube(8.5, 5.5, 0.0));
+    game.objects.push_back(new Sphere(10.5, 5.5, 0.0));
+
+    thread inpThread(inputThreadFunc);
+    inpThread.detach();
+
+    cout << "Управление: W/S – вперёд/назад, A/D – вбок, Q/E – поворот (нажимайте Enter после символа)" << endl;
+
+    while (true) {
+        char cmd = inputCmd.exchange(0);
+        switch (cmd) {
+            case 'w': game.moveForward( MOVE_SPEED); break;
+            case 's': game.moveForward(-MOVE_SPEED); break;
+            case 'a': game.moveSide(-MOVE_SPEED);    break;
+            case 'd': game.moveSide( MOVE_SPEED);    break;
+            case 'q': game.rotate(-ROT_SPEED);       break;
+            case 'e': game.rotate( ROT_SPEED);       break;
+            default: break;
+        }
+
+        game.update(FRAME_DT);
+        game.render();
+        this_thread::sleep_for(chrono::milliseconds(30));
+    }
+
     return 0;
 }
