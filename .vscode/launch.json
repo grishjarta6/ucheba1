@@ -8,8 +8,8 @@
       "args": [],
       "stopAtEntry": false,
       "externalConsole": true,
-      "cwd": "c:/Users/user/Documents/ucheba/ucheba1/2.8 list",
-      "program": "c:/Users/user/Documents/ucheba/ucheba1/2.8 list/build/Debug/outDebug",
+      "cwd": "c:/Users/user/Documents/ucheba/ucheba1/3Dengine",
+      "program": "c:/Users/user/Documents/ucheba/ucheba1/3Dengine/build/Debug/outDebug",
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
       "setupCommands": [
