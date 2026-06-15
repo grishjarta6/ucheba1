@@ -1,6 +1,3 @@
-// ConsoleApplication5.cpp : Этот файл содержит функцию "main". Здесь начинается и заканчивается выполнение программы.
-//
-
 #include <iostream>
 //#include <list>
 using namespace std;
@@ -106,10 +103,34 @@ void ts1(){
 
 }
 
-
+void ts2() {
+    MyList list;
+    int k, n, x;
+    
+    // Ввод: сначала k (номер с конца), затем n (количество элементов), затем сами элементы
+    cin >> k;
+    cin >> n;
+    
+    // Заполняем список (push_front - порядок будет обратным)
+    for (int i = 0; i < n; ++i) {
+        cin >> x;
+        list.push_front(x);
+    }
+    // Разворачиваем список: теперь k-й с конца стал k-м с начала
+    list.reverse();    
+    // Ищем k-й элемент с начала (индексация с 1)
+    Node* cur = list.head;
+    for (int i = 1; i < k; ++i) {
+        cur = cur->next;
+    }
+    
+    // Выводим результат
+    cout << cur->data << endl;
+}
 
 int main(){
     //ts1
+	ts2();
 
     return 0;
 
