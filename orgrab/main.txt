@@ -1,0 +1,287 @@
+function createPresentationFromDocPages_v14() {
+  // ---------- НАСТРОЙКИ ----------
+  const DOC_NAME = 'rab soc';
+  const TEMPLATE_NAME = 'shab';
+
+  // Лимиты символов для слайдов
+  const LIMITS = {
+    normal: { min: 600, max: 1000 },   // слайды без картинки
+    image:  { min: 200, max: 600 }     // слайды с картинкой (каждый 5-й)
+  };
+
+  // ---------- 1. Поиск Google Документа ----------
+  const files = DriveApp.getFilesByName(DOC_NAME);
+  let docFile = null;
+  while (files.hasNext()) {
+    const f = files.next();
+    if (f.getMimeType() === 'application/vnd.google-apps.document') {
+      docFile = f;
+      break;
+    }
+  }
+  if (!docFile) throw new Error(`Документ "${DOC_NAME}" не найден как Google Документ.`);
+  const doc = DocumentApp.openById(docFile.getId());
+
+  // ---------- 2. Шаблон ----------
+  const templateFiles = DriveApp.getFilesByName(TEMPLATE_NAME);
+  if (!templateFiles.hasNext()) throw new Error(`Шаблон "${TEMPLATE_NAME}" не найден.`);
+  const templateFile = templateFiles.next();
+  const template = SlidesApp.openById(templateFile.getId());
+
+  // ---------- 3. Извлекаем текст и картинки ----------
+  const body = doc.getBody();
+  const allParagraphs = body.getParagraphs();
+  const rawTexts = [];
+  const imageBlobs = [];
+
+  for (const para of allParagraphs) {
+    const text = para.getText().trim();
+    if (text) rawTexts.push(text);
+  }
+  const images = body.getImages();
+  for (const img of images) {
+    if (img.getParent().getType() === DocumentApp.ElementType.PARAGRAPH) {
+      imageBlobs.push(img.getBlob());
+    }
+  }
+  Logger.log(`Исходных абзацев: ${rawTexts.length}, картинок: ${imageBlobs.length}`);
+
+  // ---------- 4. Формируем чанки с учётом типа слайда ----------
+  const chunks = [];
+  let slideIndex = 1;           // номер будущего слайда (1-based)
+  let buffer = [];              // массив строк текущего слайда
+  let bufferLen = 0;            // суммарная длина текста в буфере (без \n)
+
+  // Функция, возвращающая лимиты для текущего слайда
+  function currentLimits() {
+    return (slideIndex % 5 === 0) ? LIMITS.image : LIMITS.normal;
+  }
+
+  // Закрыть текущий буфер (добавить чанк)
+  function flushBuffer() {
+    if (buffer.length > 0) {
+      chunks.push(buffer.join('\n'));
+      buffer = [];
+      bufferLen = 0;
+    }
+  }
+
+  // Разбить длинный абзац на части, каждая не длиннее maxLen
+  function splitParagraph(text, maxLen) {
+    const parts = [];
+    let remaining = text;
+    while (remaining.length > 0) {
+      if (remaining.length <= maxLen) {
+        parts.push(remaining);
+        break;
+      }
+      // ищем пробел перед maxLen
+      let cut = remaining.lastIndexOf(' ', maxLen);
+      if (cut === -1 || cut < 50) cut = maxLen;  // если нет пробела, режем жёстко
+      parts.push(remaining.substring(0, cut).trim());
+      remaining = remaining.substring(cut).trim();
+    }
+    return parts;
+  }
+
+  // Основной цикл по абзацам
+  for (let i = 0; i < rawTexts.length; i++) {
+    let para = rawTexts[i];
+    // Пока абзац не обработан полностью
+    while (para.length > 0) {
+      const { min, max } = currentLimits();
+      const remainingSpace = max - bufferLen - (buffer.length > 0 ? 1 : 0); // 1 на \n если буфер не пуст
+
+      if (bufferLen === 0 && para.length >= min && para.length <= max) {
+        // Абзац идеально входит в пустой буфер
+        buffer.push(para);
+        bufferLen = para.length;
+        flushBuffer();
+        slideIndex++;
+        para = '';
+      } else if (bufferLen > 0) {
+        // Буфер уже не пуст – пробуем добавить абзац целиком
+        const needForMin = Math.max(0, min - bufferLen);
+        if (para.length <= remainingSpace) {
+          // Влезает целиком
+          buffer.push(para);
+          bufferLen += 1 + para.length;
+          if (bufferLen >= min) {
+            flushBuffer();
+            slideIndex++;
+          }
+          para = '';
+        } else {
+          // Не влезает целиком
+          if (bufferLen >= min) {
+            // Буфер уже достаточно заполнен – закрываем его
+            flushBuffer();
+            slideIndex++;
+            // и продолжаем обрабатывать этот же абзац для нового слайда
+          } else {
+            // Буфер меньше min – добираем часть абзаца до min или max
+            const toTake = Math.min(remainingSpace, max - bufferLen);
+            // ищем последний пробел в пределах toTake
+            let sub = para.substring(0, toTake);
+            const lastSpace = sub.lastIndexOf(' ');
+            if (lastSpace > 0) sub = sub.substring(0, lastSpace);
+            const addLen = sub.length;
+            buffer.push(sub);
+            bufferLen += 1 + addLen;
+            para = para.substring(sub.length).trim();
+            // Если после добавления достигли min – закрываем слайд
+            if (bufferLen >= min) {
+              flushBuffer();
+              slideIndex++;
+            }
+            // если буфер всё ещё меньше min, он останется открытым и будет дозаполняться следующими абзацами
+          }
+        }
+      } else {
+        // Пустой буфер и абзац короче min или длиннее max
+        if (para.length < min) {
+          // Короткий абзац – кладём в буфер и ждём ещё
+          buffer.push(para);
+          bufferLen = para.length;
+          para = '';
+          // Если этот слайд должен быть картинковым и мы уже имеем >= min? Может быть меньше min, это допустимо.
+          // Не закрываем, будем добавлять ещё.
+        } else {
+          // Абзац длиннее max – разбиваем на части согласно max текущего слайда
+          const parts = splitParagraph(para, max);
+          // Первую часть обрабатываем сейчас, остальные пойдут в следующих итерациях
+          const firstPart = parts.shift();
+          // Кладём первую часть как отдельный слайд
+          chunks.push(firstPart);
+          slideIndex++;
+          // Если остались части, склеиваем их обратно в para и продолжаем
+          para = parts.join(' ');  // примерно сохраняем текст
+        }
+      }
+    }
+  }
+  // Выгружаем остаток буфера (последний слайд может не достигнуть min – это нормально)
+  flushBuffer();
+
+  Logger.log(`После разбиения: ${chunks.length} слайдов`);
+
+  // ---------- 5. Копия шаблона ----------
+  const copyFile = DriveApp.getFileById(templateFile.getId()).makeCopy('Результат');
+  const newPres = SlidesApp.openById(copyFile.getId());
+  while (newPres.getSlides().length > 0) newPres.getSlides()[0].remove();
+
+  // ---------- 6. Макеты (диагностика) ----------
+  const layouts = newPres.getLayouts();
+  Logger.log('Доступные макеты:');
+  for (const l of layouts) {
+    let textCount = 0, imageCount = 0;
+    for (const s of l.getShapes()) {
+      if (typeof s.getPlaceholder === 'function') {
+        const p = s.getPlaceholder();
+        if (p) {
+          const t = p.getPlaceholderType();
+          if (t === SlidesApp.PlaceholderType.IMAGE) imageCount++;
+          else textCount++;
+        }
+      } else {
+        try { if (s.getText) textCount++; } catch (e) {}
+      }
+    }
+    Logger.log(`  Макет "${l.getLayoutName()}": текстовых=${textCount}, картинок=${imageCount}`);
+  }
+
+  const origSlides = template.getSlides();
+  if (origSlides.length < 2) throw new Error('В шаблоне должно быть минимум два слайда.');
+  const textLayoutName  = origSlides[0].getLayout().getLayoutName();
+  const imageLayoutName = origSlides[1].getLayout().getLayoutName();
+  Logger.log(`Макет первого слайда шаблона: "${textLayoutName}"`);
+  Logger.log(`Макет второго слайда шаблона: "${imageLayoutName}"`);
+
+  let textLayout = null, imageLayout = null;
+  for (const l of layouts) {
+    if (l.getLayoutName() === textLayoutName) textLayout = l;
+    if (l.getLayoutName() === imageLayoutName) imageLayout = l;
+  }
+  if (!textLayout || !imageLayout) {
+    textLayout = textLayout || layouts.find(l => l.getShapes().some(s => {
+      if (typeof s.getPlaceholder === 'function') {
+        const p = s.getPlaceholder();
+        return p && p.getPlaceholderType() !== SlidesApp.PlaceholderType.IMAGE;
+      } else {
+        try { return !!s.getText; } catch (e) { return false; }
+      }
+    }));
+    imageLayout = imageLayout || layouts.find(l => l.getShapes().some(s => {
+      if (typeof s.getPlaceholder === 'function') {
+        const p = s.getPlaceholder();
+        return p && p.getPlaceholderType() === SlidesApp.PlaceholderType.IMAGE;
+      }
+      return false;
+    }));
+    if (textLayout) Logger.log('Автовыбор текстового макета: ' + textLayout.getLayoutName());
+    if (imageLayout) Logger.log('Автовыбор макета с картинкой: ' + imageLayout.getLayoutName());
+  }
+  if (!textLayout || !imageLayout) {
+    throw new Error('Не удалось найти подходящие макеты для текста и картинок.');
+  }
+
+  // ---------- 7. Поиск элементов на слайде ----------
+  function findTextShape(slide) {
+    for (const shape of slide.getShapes()) {
+      if (typeof shape.getPlaceholder === 'function') {
+        const ph = shape.getPlaceholder();
+        if (ph && ph.getPlaceholderType() !== SlidesApp.PlaceholderType.IMAGE) return shape;
+      } else {
+        try { if (shape.getText) return shape; } catch (e) {}
+      }
+    }
+    return null;
+  }
+
+  function findImagePlaceholder(slide) {
+    for (const shape of slide.getShapes()) {
+      if (typeof shape.getPlaceholder === 'function') {
+        const ph = shape.getPlaceholder();
+        if (ph && ph.getPlaceholderType() === SlidesApp.PlaceholderType.IMAGE) return shape;
+      }
+    }
+    return null;
+  }
+
+  // ---------- 8. Создание слайдов ----------
+  let imgIdx = 0;
+  for (let i = 0; i < chunks.length; i++) {
+    const slideNum = i + 1;
+    const useImage = (slideNum % 5 === 0);
+    const layout = useImage ? imageLayout : textLayout;
+    const slide = newPres.appendSlide(layout);
+
+    // Вставка текста
+    const textShape = findTextShape(slide);
+    if (textShape) {
+      const tf = textShape.getText();
+      tf.setText(chunks[i]);
+      // Шрифт и размер наследуются из шаблона
+    } else {
+      Logger.log(`Слайд ${slideNum}: не найден текстовый элемент`);
+    }
+
+    // Вставка картинки
+    if (useImage && imgIdx < imageBlobs.length) {
+      const imgBlob = imageBlobs[imgIdx];
+      const imgShape = findImagePlaceholder(slide);
+      if (imgShape) {
+        imgShape.asImage().replace(imgBlob);
+      } else {
+        slide.insertImage(imgBlob, 400, 250, 200, 150);
+      }
+      imgIdx++;
+    }
+
+    if ((i + 1) % 100 === 0 || i === chunks.length - 1) {
+      Logger.log(`Создано слайдов: ${i + 1} из ${chunks.length}`);
+    }
+  }
+
+  Logger.log('Готово! ' + newPres.getUrl());
+}
