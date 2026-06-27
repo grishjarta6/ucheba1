@@ -106,11 +106,28 @@ void ts1(){
 
 }
 
+void ts2() {
+    MyList lst;
+    int n, x, k;
+    cin >> n;
+    for (int i = 0; i < n; ++i) {
+        cin >> x;
+        lst.push_back(x);
+    }
+	cout << "k: " << endl;
+    cin >> k;
+    lst.reverse();
+    Node* cur = lst.head;
+    for (int i = 1; i < k; ++i) {
+        cur = cur->next;
+    }
+    cout << cur->data << endl;
+}
 
 
 int main(){
-    //ts1
-
+    //ts1();
+	//ts2();
     return 0;
 
 }
