@@ -85,6 +85,39 @@ struct Clist {
         }
         head = prv;
     }
+    void DelVal(uni val) {
+    if (EmpAsk()) return;    
+    if ((*head).dat == val) {
+        Ldat* tmp = head;
+        head = (*head).next;
+        delete tmp;
+        return;
+    }
+    Ldat* cur = head;
+    while ((*cur).next != nullptr) {
+        if ((*(*cur).next).dat == val) {
+            Ldat* tmp = (*cur).next;
+            (*cur).next = (*tmp).next;
+            delete tmp;
+            return;       
+        }
+        cur = (*cur).next;
+    }
+    }
+    void RemDupSort() {
+    if (EmpAsk()) return;               
+    Ldat* cur = head;
+    while ((*cur).next != nullptr) {
+        if ((*cur).dat == (*(*cur).next).dat) {
+            Ldat* tmp = (*cur).next;
+            (*cur).next = (*tmp).next;
+            delete tmp;
+        } else {
+            cur = (*cur).next;
+        }
+    }
+    }
+    
 };
 
 
@@ -172,7 +205,37 @@ void ts2(){
     cout << (*second).dat << endl;
 }
 
+void ts3() {
+    Clist<int> com;
+    com.strt();
+    int i, n, x;
+    cin >> n;
+    for (i = 0; i < n; i += 1) {
+        cin >> x;
+        com.PB(x);
+    }
+    com.prnt();       
+    int val;
+    cin >> val;
+    com.DelVal(val);             
+    com.prnt();                     
+}
 
+void ts4() {
+    Clist<int> com;
+    com.strt();
+
+    int i, n, x;
+    cin >> n;         
+    for (i = 0; i < n; i += 1) {
+        cin >> x;
+        com.PB(x);
+    }
+
+    com.prnt();                         
+    com.RemDupSort();                   
+    com.prnt();                         
+}
 
 int main(){
     //tst();
@@ -180,5 +243,7 @@ int main(){
 
     //ts1();
     //ts2();
+    //ts3();
+    //ts4();
     return 0;
 }
