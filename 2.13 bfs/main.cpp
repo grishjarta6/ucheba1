@@ -5,7 +5,6 @@
 
 using namespace std;
 
-// Задача A. BFS на очереди (обычный BFS)
 void za(){
     int n, m, s;
     int i, u, v;
@@ -45,7 +44,6 @@ void za(){
     cout << endl;
 }
 
-// Задача B. Эвакуация (множественный источник)
 void zb(){
     int n, k, m;
     int i, u, v, exit_node;
@@ -89,7 +87,6 @@ void zb(){
     cout << endl;
 }
 
-// Задача C. 0-1 BFS
 void zc(){
     int n, m, s;
     int i, u, v, w;
@@ -137,8 +134,8 @@ void zc(){
 }
 
 int main(){
-    //za();   // раскомментируйте для задачи A
-    // zb();   // раскомментируйте для задачи B
-    // zc();   // раскомментируйте для задачи C
+    za();   
+    // zb();   
+    // zc();   
     return 0;
 }
